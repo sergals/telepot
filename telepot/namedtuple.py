@@ -110,7 +110,7 @@ def UserArray(data):
 # incoming
 ChatPhoto = _create_class('ChatPhoto', [
                 'small_file_id',
-                'big_file_id',
+                'big_file_id'
             ])
 
 # incoming
@@ -127,7 +127,7 @@ Chat = _create_class('Chat', [
            'invite_link',
            _Field('pinned_message', constructor=_Message),
            'sticker_set_name',
-           'can_set_sticker_set',
+           'can_set_sticker_set'
        ])
 
 # incoming
@@ -136,7 +136,7 @@ PhotoSize = _create_class('PhotoSize', [
                 'width',
                 'height',
                 'file_size',
-                'file_path',  # undocumented
+                'file_path'  # undocumented
             ])
 
 # incoming
@@ -146,7 +146,8 @@ Audio = _create_class('Audio', [
             'performer',
             'title',
             'mime_type',
-            'file_size'
+            'file_size',
+            _Field('thumb', constructor=PhotoSize)
         ])
 
 # incoming
@@ -156,7 +157,7 @@ Document = _create_class('Document', [
                'file_name',
                'mime_type',
                'file_size',
-               'file_path',  # undocumented
+               'file_path'  # undocumented
            ])
 
 # incoming and outgoing
@@ -164,7 +165,7 @@ MaskPosition = _create_class('MaskPosition', [
                    'point',
                    'x_shift',
                    'y_shift',
-                   'scale',
+                   'scale'
                ])
 
 # incoming
@@ -176,7 +177,7 @@ Sticker = _create_class('Sticker', [
               'emoji',
               'set_name',
               _Field('mask_position', constructor=MaskPosition),
-              'file_size',
+              'file_size'
           ])
 
 def StickerArray(data):
@@ -187,7 +188,7 @@ StickerSet = _create_class('StickerSet', [
                  'name',
                  'title',
                  'contains_masks',
-                 _Field('stickers', constructor=StickerArray),
+                 _Field('stickers', constructor=StickerArray)
              ])
 
 # incoming
@@ -279,6 +280,7 @@ ChatMember = _create_class('ChatMember', [
                  'can_send_other_messages',
                  'can_add_web_page_previews',
              ])
+
 
 def ChatMemberArray(data):
     return [ChatMember(**p) for p in data]
@@ -432,7 +434,7 @@ SuccessfulPayment = _create_class('SuccessfulPayment', [
                         'shipping_option_id',
                         _Field('order_info', constructor=OrderInfo),
                         'telegram_payment_charge_id',
-                        'provider_payment_charge_id',
+                        'provider_payment_charge_id'
                     ])
 
 # incoming
@@ -479,6 +481,7 @@ Message = _create_class('Message', [
               _Field('invoice', constructor=Invoice),
               _Field('successful_payment', constructor=SuccessfulPayment),
               'connected_website',
+              _Field('animation', constructor=Animation)
           ])
 
 # incoming
@@ -487,7 +490,7 @@ InlineQuery = _create_class('InlineQuery', [
                   _Field('from_', constructor=User),
                   _Field('location', constructor=Location),
                   'query',
-                  'offset',
+                  'offset'
               ])
 
 # incoming
@@ -496,7 +499,7 @@ ChosenInlineResult = _create_class('ChosenInlineResult', [
                          _Field('from_', constructor=User),
                          _Field('location', constructor=Location),
                          'inline_message_id',
-                         'query',
+                         'query'
                      ])
 
 # incoming
@@ -507,7 +510,7 @@ CallbackQuery = _create_class('CallbackQuery', [
                     'inline_message_id',
                     'chat_instance',
                     'data',
-                    'game_short_name',
+                    'game_short_name'
                 ])
 
 # incoming
@@ -519,7 +522,7 @@ Update = _create_class('Update', [
              _Field('edited_channel_post', constructor=Message),
              _Field('inline_query', constructor=InlineQuery),
              _Field('chosen_inline_result', constructor=ChosenInlineResult),
-             _Field('callback_query', constructor=CallbackQuery),
+             _Field('callback_query', constructor=CallbackQuery)
          ])
 
 # incoming
