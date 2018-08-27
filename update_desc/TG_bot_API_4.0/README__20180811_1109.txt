@@ -1,0 +1,68 @@
+
+
+After one night of sleeping, I realize some bugs and shortcomings in last night's changes. I am going to fix them today.
+
+The function _rectify(dict) serves two purposes:
+
+    If any values is a list, dict, or tuple, _rectify flattens it into a JSON-encoded string.
+
+    It filters out null values.
+
+I always use _rectify to clean/normalize a dict before passing it to _api_request_with_file(). However, in last night's changes, I made the mistake of doing _rectify(f), using _rectify to clean the files dict.
+
+The values in f normally are either strings (file id on Telegram servers) or file objects (local files to be uploaded). But they could also be tuples, to include the filename in addition to the file object. When _rectify sees a tuple, it flattens it into a JSON-encoded string, which is wrong in this case. I only want it to filter out nulls.
+
+Those changes I proposed yesterday now become this:
+
+def _split(params, files=[]):
+    return (
+        { k:v for k,v in params.items() if k not in ['self']+files },
+        { k:v for k,v in params.items() if k in files })
+
+def _nonull(params):
+    return { k:v for k,v in params.items() if v is not None }
+
+def _rectify(params):
+    #
+    # no change
+    #
+
+
+class Bot(_BotBase):
+    def _api_request(self, method, params=None, files=None, **kwargs):
+        #
+        # no change
+        #
+
+    def _api_request_with_file(self, method, params, files, **kwargs):
+        params.update({
+            k:v for k,v in files.items() if _isstring(v) })
+
+        files = {
+            k:v for k,v in files.items() if not _isstring(v) }
+
+        return self._api_request(method, params, files, **kwargs)
+
+
+    def sendMessage( ... ):
+        p,f = _split(locals())
+        return self._api_request('sendMessage', _rectify(p))
+
+    def sendAnimation( ... ):
+        p,f = _split(locals(), files=['animation', 'thumb'])
+        return self._api_request_with_file('sendAnimation', _rectify(p), _nonull(f))
+
+    _strip is renamed to _split, meaning to split parameters into regular ones and file ones.
+
+    Add a function _nonull() whose only job is to remove null values from a dict.
+
+    _api_request_with_file() assumes the supplied dicts are always cleaned and normalized. No need to worry about null values inside.
+
+    sendMessage() demonstrates how to implement a method with no file attached.
+
+    sendAnimation() demonstrates how to implement a method with files attached potentially.
+
+With the repeated applications of _rectify() and _nonull(), you may prefer to hide them in one more level of function call, or even hide them in _api_request() and _api_request_with_file(). I think it's just a matter of taste and style. I prefer the transparency, to write and see them explicitly, to remind myself that parameters should be cleaned and normalized before use.
+
+Ok. That's it for today. We still haven't finished the job. I will continue some time later.
+
