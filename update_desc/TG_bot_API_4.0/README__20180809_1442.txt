@@ -1,0 +1,99 @@
+Tonight, let's see how to change methods.
+
+Telegram says:
+
+    Added support for Foursquare venues: added ... the parameter foursquare_type to the sendVenue method.
+
+    Added vCard support when sharing contacts: added the field vcard to ... the method sendContact.
+
+The two methods, sendVenue and sendContact, are adjacent in the file __init__.py, within the Bot class. Let's look at them together. Here are the original:
+
+def sendVenue(self, chat_id, latitude, longitude, title, address,
+              foursquare_id=None,
+              disable_notification=None,
+              reply_to_message_id=None,
+              reply_markup=None):
+    """ See: https://core.telegram.org/bots/api#sendvenue """
+    p = _strip(locals())
+    return self._api_request('sendVenue', _rectify(p))
+
+def sendContact(self, chat_id, phone_number, first_name,
+                last_name=None,
+                disable_notification=None,
+                reply_to_message_id=None,
+                reply_markup=None):
+    """ See: https://core.telegram.org/bots/api#sendcontact """
+    p = _strip(locals())
+    return self._api_request('sendContact', _rectify(p))
+
+Changes are straight-forward:
+
+def sendVenue(self, chat_id, latitude, longitude, title, address,
+              foursquare_id=None,
+              foursquare_type=None,
+              disable_notification=None,
+              reply_to_message_id=None,
+              reply_markup=None):
+    """ See: https://core.telegram.org/bots/api#sendvenue """
+    p = _strip(locals())
+    return self._api_request('sendVenue', _rectify(p))
+
+def sendContact(self, chat_id, phone_number, first_name,
+                last_name=None,
+                vcard=None,
+                disable_notification=None,
+                reply_to_message_id=None,
+                reply_markup=None):
+    """ See: https://core.telegram.org/bots/api#sendcontact """
+    p = _strip(locals())
+    return self._api_request('sendContact', _rectify(p))
+
+Both are optional parameters, so default to None. There's nothing to change in the method body. _strip(locals()) puts all method parameters other than self into a dict. _rectify(p) removes all None values before passing them to self._api_request().
+
+Telegram says:
+
+    Added the method sendAnimation, which can be used instead of sendDocument to send animations, specifying their duration, width and height.
+
+Luckily, we have a lot of send* methods to copy from, e.g. sendDocument, sendVideo, sendVoice, etc. I use sendVideo as an example:
+
+def sendVideo(self, chat_id, video,
+              duration=None,
+              width=None,
+              height=None,
+              caption=None,
+              parse_mode=None,
+              supports_streaming=None,
+              disable_notification=None,
+              reply_to_message_id=None,
+              reply_markup=None):
+    """
+    See: https://core.telegram.org/bots/api#sendvideo
+
+    :param video: Same as ``photo`` in :meth:`telepot.Bot.sendPhoto`
+    """
+    p = _strip(locals(), more=['video'])
+    return self._api_request_with_file('sendVideo', _rectify(p), 'video', video)
+
+Making sendAnimation is just a matter of fixing names and matching method parameters with Telegram docs:
+
+def sendAnimation(self, chat_id, animation,
+                  duration=None,
+                  width=None,
+                  height=None,
+                  caption=None,
+                  parse_mode=None,
+                  disable_notification=None,
+                  reply_to_message_id=None,
+                  reply_markup=None):
+    """
+    See: https://core.telegram.org/bots/api#sendanimation
+
+    :param video: Same as ``photo`` in :meth:`telepot.Bot.sendPhoto`
+    """
+    p = _strip(locals(), more=['animation'])
+    return self._api_request_with_file('sendAnimation', _rectify(p), 'animation', animation)
+
+Sending files takes some special handling. That's why I have to _strip the animation and pass it to self._api_request_with_file() outside of the rectified dict.
+
+Unfortunately, I wasn't aware of the "thumb" parameter, which must have been added at some earlier date. To take care of it, we have to modify _api_request_with_file() to handle one more file to be uploaded.
+

@@ -1,0 +1,115 @@
+Let me brief on anyone who wants to make changes to accommodate the latest Bot API (4.0). I start with more trivial ones, then move on to harder ones.
+
+Telegram says:
+
+    Added the field thumb to the Audio object to contain the thumbnail of the album cover to which the
+    music file belongs.
+
+Key phrase is "Added the field thumb to the Audio object". In telepot, the habit is to represent API objects using Python dictionaries, so a new field in an object should not affect us. However, to facilitate accessing a field using . notation, there is a way to convert a dictionary into a namedtuple. As a result, every API object has a corresponding namedtuple. When a field is added to an object, we need to make a corresponding change to that namedtuple. The file is namedtuple.py. The original definition of Audio is:
+
+# incoming
+Audio = _create_class('Audio', [
+            'file_id',
+            'duration',
+            'performer',
+            'title',
+            'mime_type',
+            'file_size'
+        ])
+
+With the addition of a thumb field of the type PhotoSize, it should be modified as:
+
+# incoming
+Audio = _create_class('Audio', [
+            'file_id',
+            'duration',
+            'performer',
+            'title',
+            'mime_type',
+            'file_size',
+            _Field('thumb', constructor=PhotoSize),
+        ])
+
+The thumb field looks more complicated than others because its type is not primitive (int, float, string, etc) and we
+need to tell it to interpret the dictionary in that place into another namedtuple. The "constructor" in this case is
+just the name of the target namedtuple, and can be considered a parsing hint.
+
+Also note the comment above the namedtuple definition. They can be:
+
+    incoming: meaning we only receive the object from Telegram servers, but never send it out
+    outgoing: meaning we only send it out, but never receive it
+    or both (rarely)
+
+This distinction is important because:
+
+    for incoming namedtuples, we must make sure all non-primitive fields be given a "constructor" like above. Otherwise, that field would remain a dictionary, which defeats the purpose of using namedtuples. This is not needed for outgoing namedtuples because fields are supplied by user, so no parsing hint is required,
+
+    for outgoing namedtuples, some fields have default values. For example, InlineQueryResultArticle's type field is default to article, as required by Bot API. In contrast, no field of any incoming namedtuples has default values.
+
+DONE: 20180811_1742 (UH)
+
+########################################################################################################################
+
+Telegram says:
+
+    Added the field animation to the Message object. For backward compatibility, when this field is set, the document
+    field will be also set.
+
+Key phrase: Added the field animation to the Message object. Points to consider:
+
+    Message is an incoming namedtuple
+    the field animation is of the type Animation
+
+Changes should be similar. I leave that to the reader as an exercise.
+
+DONE: 20180811_1752 (UH)
+
+########################################################################################################################
+
+Telegram says:
+
+    Added support for Foursquare venues: added the new field foursquare_type to the objects
+    Venue, InlineQueryResultVenue and InputVenueMessageContent, and the parameter foursquare_type
+    to the sendVenue method.
+
+Points to consider:
+
+    The field foursquare_type is of the type String. No parsing hint (if incoming) is needed.
+    Venue is incoming
+    InlineQueryResultVenue and InputVenueMessageContent are outgoing
+
+I also leave the changes as an exercise.
+
+As for the method sendVenue, I will delay the discussion until later, lumping it together with other method changes.
+
+DONE: 201808 (UH)
+
+########################################################################################################################
+
+Telegram says:
+
+    Added vCard support when sharing contacts: added the field vcard to the objects Contact, InlineQueryResultContact, InputContactMessageContent and the method sendContact.
+
+    The field vcard is of the type String.
+    Contact is incoming
+    InlineQueryResultContact and InputContactMessageContent are outgoing
+
+I will delay the discussion of the method sendContact similarly.
+
+DONE: 201808 (UH)
+
+########################################################################################################################
+
+Telegram says:
+
+    Added support for editing the media content of messages: added the method editMessageMedia and new types InputMediaAnimation, InputMediaAudio, and InputMediaDocument.
+
+Finally, we have to create new types of namedtuple here.
+
+    InputMediaAnimation, InputMediaAudio, and InputMediaDocument are all outgoing
+
+Luckily, there are two InputMedia* siblings in existence already: InputMediaPhoto and InputMediaVideo. Find them, and use them as templates for the new members.
+
+DONE: 201808 (UH)
+
+########################################################################################################################

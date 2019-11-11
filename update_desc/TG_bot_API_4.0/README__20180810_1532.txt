@@ -1,0 +1,113 @@
+Last night was the first time I am aware of the thumb parameter. Its addition requires me to cram one more file to the call to _api_request_with_file(), whose original version is this:
+
+def _api_request_with_file(self, method, params, file_key, file_value, **kwargs):
+    if _isstring(file_value):
+        params[file_key] = file_value
+        return self._api_request(method, _rectify(params), **kwargs)
+    else:
+        files = {file_key: file_value}
+        return self._api_request(method, _rectify(params), files, **kwargs)
+
+Bot API allows file_value to be either a string (serving as a file id which refers to an existing file on Telegram servers) or a local file to be uploaded. That's why I have to distinguish between file_value being a string or not above. If it is a string, merge it to params. If not a string, I assume it's a file and pass it separately. Note that variable files is a dict.
+
+Now, I want _api_request_with_file() to be able to handle multiple files. I would squeeze file_key and file_value into one parameter of dict:
+
+def _api_request_with_file(self, method, params, files, **kwargs):
+    params.update({
+        k:v for k,v in files.items() if _isstring(v) })
+
+    files = {
+        k:v for k,v in files.items() if v is not None and not _isstring(v) }
+
+    return self._api_request(method, _rectify(params), files, **kwargs)
+
+I hate sprinkling trivial comments among code, so I explain here:
+
+    params.update({ k:v for k,v in files.items() if _isstring(v) }) basically extracts all string values from files and merges them with params
+    files = { k:v for k,v in files.items() if v is not None and not _isstring(v) } basically extracts all non-null non-string values from files and reassigns them to the variable files
+
+With this change to _api_request_with_file() and the addition of the thumb parameter, sendAnimation should looks like this:
+
+def sendAnimation(self, chat_id, animation,
+                  duration=None,
+                  width=None,
+                  height=None,
+                  thumb=None,
+                  caption=None,
+                  parse_mode=None,
+                  disable_notification=None,
+                  reply_to_message_id=None,
+                  reply_markup=None):
+    """
+    See: https://core.telegram.org/bots/api#sendanimation
+
+    :param video: Same as ``photo`` in :meth:`telepot.Bot.sendPhoto`
+    """
+    p = _strip(locals(), more=['animation', 'thumb'])
+    return self._api_request_with_file('sendAnimation',
+                                       _rectify(p),
+                                       {'animation': animation, 'thumb': thumb})
+
+If you don't mind being a bit venturesome, let me suggest one more change regarding the function _strip(). Instead of simply removing certain parameters from locals(), I want it to package them into a separate dict, so I can pass it directly.
+
+Originally:
+
+def _strip(params, more=[]):
+    return {key: value for key,value in params.items() if key not in ['self']+more}
+
+I would change it to:
+
+def _strip(params, files=[]):
+    return (
+        { k:v for k,v in params.items() if k not in ['self']+files },
+        { k:v for k,v in params.items() if k in files })
+
+Then, sendAnimation becomes:
+
+def sendAnimation(self, chat_id, animation,
+                  duration=None,
+                  width=None,
+                  height=None,
+                  thumb=None,
+                  caption=None,
+                  parse_mode=None,
+                  disable_notification=None,
+                  reply_to_message_id=None,
+                  reply_markup=None):
+    """
+    See: https://core.telegram.org/bots/api#sendanimation
+
+    :param video: Same as ``photo`` in :meth:`telepot.Bot.sendPhoto`
+    """
+    p,f = _strip(locals(), files=['animation', 'thumb'])
+    return self._api_request_with_file('sendAnimation', _rectify(p), _rectify(f))
+
+Remember to add thumb parameter to all other relevant methods. For example, sendVideo should look like:
+
+def sendVideo(self, chat_id, video,
+              duration=None,
+              width=None,
+              height=None,
+              thumb=None,
+              caption=None,
+              parse_mode=None,
+              supports_streaming=None,
+              disable_notification=None,
+              reply_to_message_id=None,
+              reply_markup=None):
+    """
+    See: https://core.telegram.org/bots/api#sendvideo
+
+    :param video: Same as ``photo`` in :meth:`telepot.Bot.sendPhoto`
+    """
+    p,f = _strip(locals(), files=['video', 'thumb'])
+    return self._api_request_with_file('sendVideo', _rectify(p), _rectify(f))
+
+Because of the change to _strip's return value, all calls to it should be re-examined and changed to:
+
+p,f = _strip(locals())
+
+Please also note that none of the above has been tested, although I am confident that they should not be far off.
+
+There are more changes to be made. Let's continue some time later. Good luck.
+
